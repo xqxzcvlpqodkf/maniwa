@@ -1,6 +1,7 @@
---!nocheck
+local HttpService = game:GetService("HttpService")
+local fetchRequest = request or http_request or syn.request
 
-local LatestCommit = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/metamethod/commits/main")).sha
+local LatestCommit = HttpService:JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/metamethod/commits/main")).sha
 local LoaderUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/" .. LatestCommit .. "/loader.luau"
 local Dependencies = loadstring(game:HttpGet(LoaderUrl))()
 local rankFlag = Dependencies["rankFlag"]
@@ -16,6 +17,61 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local AvailableHitSounds = {}
+local HitSoundFiles = {}
+local apiUrl = "https://api.github.com/repos/xqxzcvlpqodkf/metamethod/contents/hit"
+
+local apiResponse = fetchRequest({
+    Url = apiUrl,
+    Method = "GET"
+})
+
+if apiResponse.Success and apiResponse.StatusCode == 200 then
+    local data = HttpService:JSONDecode(apiResponse.Body)
+    for i = 1, #data do
+        local fileInfo = data[i]
+        if fileInfo.type == "file" then
+            local fileName = fileInfo.name
+            local soundName = string.gsub(fileName, "%.mp3", "")
+            soundName = string.gsub(soundName, "%.wav", "")
+            soundName = string.gsub(soundName, "%.ogg", "")
+
+            if isfile(fileName) then
+                table.insert(AvailableHitSounds, soundName)
+                HitSoundFiles[soundName] = fileName
+            else
+                local fileResponse = fetchRequest({
+                    Url = fileInfo.download_url,
+                    Method = "GET"
+                })
+                if fileResponse.Success and fileResponse.StatusCode == 200 then
+                    writefile(fileName, fileResponse.Body)
+                    table.insert(AvailableHitSounds, soundName)
+                    HitSoundFiles[soundName] = fileName
+                else
+                    Rayfield:Notify({
+                        Title = "Download Failed",
+                        Content = "Failed to download hit sound: " .. fileName,
+                        Duration = 5,
+                        Image = 4483362458
+                    })
+                end
+            end
+        end
+    end
+else
+    Rayfield:Notify({
+        Title = "API Error",
+        Content = "Failed to retrieve directory information from GitHub",
+        Duration = 5,
+        Image = 4483362458
+    })
+end
+
+if #AvailableHitSounds == 0 then
+    table.insert(AvailableHitSounds, "None")
+end
 
 local Delta = ReplicatedStorage:WaitForChild("Delta")
 local DeltaFramework = require(Delta:WaitForChild("DeltaFramework"))
@@ -50,7 +106,8 @@ local State = {
     SilentAimFOVRadius = 150,
     SilentAimFOVDraw = nil,
     TargetPart = "Head",
-    HitSound = "CS2",
+    HitSound = AvailableHitSounds[1],
+    HitSoundsEnabled = false,
 }
 
 local SCP_LIST = {
@@ -120,6 +177,29 @@ local function CheckForMod(player)
             Image = 4483362458
         })
     end
+end
+
+local function PlayHitSound()
+    if not State.HitSoundsEnabled then return end
+    if State.HitSound == "None" then return end
+    
+    local fileName = HitSoundFiles[State.HitSound]
+    if not fileName or not isfile(fileName) then return end
+    
+    local sound = Instance.new("Sound")
+    sound.SoundId = getcustomasset(fileName)
+    sound.Parent = workspace
+    
+    if not sound.IsLoaded then
+        sound.Loaded:Wait()
+    end
+    
+    sound:Play()
+    
+    task.spawn(function()
+        sound.Ended:Wait()
+        sound:Destroy()
+    end)
 end
 
 local function CreateDrawingESP(player)
@@ -450,9 +530,8 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             if State.VisualizeShots then
                 VisualizeShot(MuzzlePos, TheirPart.Position)
             end
-            
-            print("Damaged somebody!")
-            -- ADD HIT SOUND PLAY LOGIC HERE
+
+            PlayHitSound()
 
             setnamecallmethod(method)
             return originalNamecall(self, unpack(args))
@@ -952,10 +1031,19 @@ CombatTab:CreateDropdown({
     end,
 })
 
+CombatTab:CreateToggle({
+    Name = "Enable Hit Sounds",
+    CurrentValue = false,
+    Flag = "HitSoundsEnabledToggle",
+    Callback = function(Value)
+        State.HitSoundsEnabled = Value
+    end
+})
+
 CombatTab:CreateDropdown({
     Name = "Hit Sound",
-    Options = {"CS2", "CS2 Variant", "Neverlose", "Rust", "Skeet"},
-    CurrentOption = {"CS2"},
+    Options = AvailableHitSounds,
+    CurrentOption = {State.HitSound},
     MultipleOptions = false,
     Flag = "HitSoundDropdown",
     Callback = function(Option)
@@ -964,6 +1052,8 @@ CombatTab:CreateDropdown({
     end,
 })
 
+CombatTab:CreateDivider()
+
 CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAuraToggle", Callback = function(Value) State.KillAura = Value end })
 CombatTab:CreateToggle({ Name = "Visualize Shots", CurrentValue = false, Flag = "VisualizeShotsToggle", Callback = function(Value) State.VisualizeShots = Value end })
 
@@ -971,6 +1061,8 @@ CombatTab:CreateDivider()
 
 CombatTab:CreateToggle({ Name = "Silent Aim", CurrentValue = false, Flag = "SilentAimToggle", Callback = function(Value) State.SilentAim = Value end})
 CombatTab:CreateToggle({ Name = "Wallbang", CurrentValue = false, Flag = "WallbangToggle", Callback = function(Value) State.SilentAimWallbang = Value end})
+
+CombatTab:CreateDivider()
 
 CombatTab:CreateToggle({ Name = "Show FOV", CurrentValue = true, Flag = "ShowFOVToggle", Callback = function(Value) State.SilentAimShowFOV = Value end})
 
@@ -1053,9 +1145,8 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
         CachedRemoteArgs[3] = Data.hitPart
 
         RemoteEvent:FireServer(unpack(CachedRemoteArgs))
-
-        print("Damaged somebody!")
-        -- ADD HIT SOUND PLAY LOGIC HERE
+        
+        PlayHitSound()
 
         if State.VisualizeShots then
             VisualizeShot(Data.muzzlePos, Data.hitPos)
