@@ -5,12 +5,12 @@ local LoaderUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/" 
 local Dependencies = loadstring(game:HttpGet(LoaderUrl))()
 local rankFlag = Dependencies["rankFlag"]
 
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
+local RunService = _G.utility.getService("RunService")
+local Players = _G.utility.getService("Players")
+local Lighting = _G.utility.getService("Lighting")
+local ReplicatedStorage = _G.utility.getService("ReplicatedStorage")
+local Workspace = _G.utility.getService("Workspace")
+local UserInputService = _G.utility.getService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -109,6 +109,17 @@ local originalNamecall
 local reloadFn = nil
 local cachedGunTable = nil
 local lastGcScan = 0
+
+local function CheckForMod(player)
+    if rankFlag(player) then
+        Rayfield:Notify({
+            Title = "Moderator Detected",
+            Content = "A moderator is in the server: " .. player.Name,
+            Duration = 20,
+            Image = 4483362458
+        })
+    end
+end
 
 local function CreateDrawingESP(player)
     if DrawingESPCache[player] then return end
@@ -430,8 +441,6 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                     TheirPart.Position.Z,
                     isPierce
                 }
-            else
-                warn("Argument table structure mismatch! Target coordinates not injected.")
             end
 
             args[2] = MuzzlePos
@@ -978,9 +987,11 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
     if not State.KillAura then return end
 
     local LocalChar = LocalPlayer.Character
+    
     if not LocalChar then return end
 
     local EquippedTool = LocalChar:FindFirstChildOfClass("Tool")
+
     if not EquippedTool then return end
 
     if not cachedGunTable then
@@ -1001,11 +1012,14 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
             cachedGunTable.CurrentAmmo = math.max(0, cachedGunTable.CurrentAmmo - 1)
             
             local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
             if playerGui then
                 local weaponUI = playerGui:FindFirstChild("WeaponUI", true) or playerGui:FindFirstChild("Main", true)
+
                 if weaponUI and weaponUI:FindFirstChild("Clip") then
                     local ammoStr = tostring(math.floor(cachedGunTable.CurrentAmmo))
                     weaponUI.Clip.Text = ammoStr
+
                     if weaponUI.Clip:FindFirstChild("Back") then
                         weaponUI.Clip.Back.Text = ammoStr
                     end
@@ -1119,14 +1133,35 @@ local function RefreshPlayerList()
     if PlayerDropdown then PlayerDropdown:Refresh(GetPlayerNamesList()) end
 end
 
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        task.spawn(CheckForMod, player)
+    end
+end
+
 table.insert(Connections, Players.PlayerAdded:Connect(function(player)
     RefreshPlayerList()
+    task.spawn(CheckForMod, player)
 end))
 
 table.insert(Connections, Players.PlayerRemoving:Connect(function(player)
     RemoveDrawingESP(player)
     RefreshPlayerList()
-    if State.Spectating and State.SpectateTarget == player.Name then StopSpectating() end
+    
+    if State.Spectating and State.SpectateTarget == player.Name then 
+        StopSpectating() 
+    end
+
+    task.spawn(function()
+        if rankFlag(player) then
+            Rayfield:Notify({
+                Title = "Moderator Left",
+                Content = "A moderator has left the server: " .. player.Name,
+                Duration = 20,
+                Image = 4483362458
+            })
+        end
+    end)
 end))
 
 table.insert(Connections, RunService.Stepped:Connect(function()
@@ -1171,7 +1206,7 @@ task.spawn(function()
                         local reloadDelay = (cachedGunTable.Pistol and 1.25 or 2.25) + 0.3
                         task.wait(reloadDelay)
                     else
-                        warn("[ERROR] Reload execution error:", err)
+                        warn("Reload execution error:", err)
                     end
                 end
             end
