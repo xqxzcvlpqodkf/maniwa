@@ -174,8 +174,8 @@ local cachedGunTable = nil
 local lastGcScan = 0
 
 local function CheckForMod(player)
-    print(player.Name .. " a mod?", rankFlag(player))
     if rankFlag(player) then
+        warn(player.Name .. " is very susicious man you gotta leave RIGHT now")
         Rayfield:Notify({
             Title = "Moderator Detected",
             Content = "A moderator is in the server: " .. player.Name,
@@ -861,9 +861,12 @@ local function RenderDrawingESP()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local head = char and char:FindFirstChild("Head")
 
+        CreateDrawingESP(player)
+        local esp = DrawingESPCache[player]
+
         if not (char and hum and hrp and head and hum.Health > 0) then
-            if DrawingESPCache[player] then
-                for _, obj in pairs(DrawingESPCache[player]) do
+            if esp then
+                for _, obj in pairs(esp) do
                     obj.Visible = false
                 end
             end
@@ -872,18 +875,14 @@ local function RenderDrawingESP()
 
         local hrpPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
 
-        if not onScreen then
-            if DrawingESPCache[player] then
-                for _, obj in pairs(DrawingESPCache[player]) do
+        if not onScreen or hrpPos.Z <= 0 then
+            if esp then
+                for _, obj in pairs(esp) do
                     obj.Visible = false
                 end
             end
             continue
         end
-
-        CreateDrawingESP(player)
-
-        local esp = DrawingESPCache[player]
 
         local teamColor = player.TeamColor and player.TeamColor.Color or Color3.fromRGB(0, 170, 255)
 
