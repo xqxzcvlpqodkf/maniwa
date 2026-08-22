@@ -18,7 +18,6 @@ local function IsFlagged(player: Player): boolean
 			"Coordinator",
 			"Administrator"
 		}) do
-			warn(role.Name)
 			if string.find(role.Name, kw) then return true end
 		end
 	end
