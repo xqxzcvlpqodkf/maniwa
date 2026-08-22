@@ -174,6 +174,7 @@ local cachedGunTable = nil
 local lastGcScan = 0
 
 local function CheckForMod(player)
+    print(player.Name .. " a mod?", rankFlag(player))
     if rankFlag(player) then
         Rayfield:Notify({
             Title = "Moderator Detected",
@@ -1547,8 +1548,8 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 table.insert(Connections, Players.PlayerAdded:Connect(function(player)
-    RefreshPlayerList()
     task.spawn(CheckForMod, player)
+    RefreshPlayerList()
 end))
 
 table.insert(Connections, Players.PlayerRemoving:Connect(function(player)
