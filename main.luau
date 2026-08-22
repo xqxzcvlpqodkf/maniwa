@@ -1,26 +1,5 @@
 --!nocheck
 
-local obf_stringchar = string.char;
-local obf_stringbyte = string.byte;
-local obf_stringsub = string.sub;
-local obf_bitlib = bit32 or bit;
-local obf_XOR = obf_bitlib.bxor;
-local obf_tableconcat = table.concat;
-local obf_tableinsert = table.insert;
-
--- oh dont worry i wont obfuscate everything
--- probably 😂
-
-local function decryption(s,k)
-	local result = {}
-
-	for i = 1, #s do
-		obf_tableinsert(result, obf_stringchar(obf_XOR(obf_stringbyte(obf_stringsub(s, i, i + 1)), obf_stringbyte(obf_stringsub(k, 1 + (i % #k), 1 + (i % #k) + 1))) % 256))
-	end
-
-	return obf_tableconcat(result)
-end
-
 local HttpService = game:GetService("HttpService")
 local fetch = request or http_request or syn.request
 
@@ -327,35 +306,24 @@ local function ClearAllDrawingESP()
 end
 
 local function IsClassDHostile(player)
-	local char = player.Character
-	
-    if not char then
-		return false
-	end
+    local char = player.Character
+    if not char then return false end
 
-	if (player.Team and (player.Team.Name ~= decryption("\242\207\218\54\245\251\138\94\245", "\126\177\163\187\69\134\219\167"))) then
-		return false
-	end
+    if player.Team and player.Team.Name ~= "Class - D" then return false end
+    if char:HasTag("EquippedGun") then return true end
+    if char:HasTag("Escaped") then return true end
 
-	if char:HasTag(decryption("\6\220\63\204\236\51\200\46\226\233\45", "\156\67\173\74\165")) then
-		return true
-	end
+    if char:HasTag("CrossedLine") then
+        local authorizer = char:FindFirstChild("Authorizer")
 
-	if char:HasTag(decryption("\17\164\74\23\172\35\66", "\38\84\215\41\118\220\70")) then
-		return true
-	end
+        if not authorizer or not authorizer:IsA("ObjectValue") or not authorizer.Value then
+            return true
+        end
 
-	if char:HasTag(decryption("\115\4\45\1\237\85\18\14\27\240\85", "\158\48\118\66\114")) then
-		local rizzmas = char:FindFirstChild(decryption("\138\49\4\62\124\183\242\177\33\2", "\155\203\68\112\86\19\197"))
-		
-        if (not rizzmas or not rizzmas:IsA(decryption("\105\223\60\249\67\108\211\249\74\200\51", "\152\38\189\86\156\32\24\133")) or not rizzmas.Value) then
-			return true
-		end
+        return false
+    end
 
-		return false
-	end
-
-	return false
+    return false
 end
 
 local function IsWhitelisted(tP)
@@ -378,9 +346,9 @@ local function IsValidTarget(player)
         return false
     end
 
-    local IsHostileCD = (TargetTeam == "Class - D" and IsClassDHostile(player))
+    local isHostileClassD = (TargetTeam == "Class - D" and IsClassDHostile(player))
 
-    if IsWhitelisted(player) and not IsHostileCD then
+    if IsWhitelisted(player) and not isHostileClassD then
         return false
     end
 
@@ -463,51 +431,49 @@ local function GetClosestPlayerInFOV()
 end
 
 local function InitializeGunData()
-	if (cachedGunTable and reloadFn) then
-		return true
-	end
+    if cachedGunTable and reloadFn then return true end
+    if os.clock() - lastGcScan < 3 then return false end
+    lastGcScan = os.clock()
 
-	if ((os.clock() - lastGcScan) < (5 - 2)) then
-		return false
-	end
+    local gc = getgc(true)
 
-	lastGcScan = os.clock()
-	local gc = getgc(true)
+    for i = 1, #gc do
+        local obj = gc[i]
 
-	for i = 1, #gc do
-		local obj = gc[i]
-		if ((type(obj) == decryption("\215\214\213\38\242\178\200\16", "\126\177\163\187\69\134\219\167")) and islclosure(obj)) then
-			local info = debug.getinfo(obj)
-			if info then
-				if ((info.name == decryption("\17\200\38\202\253\39", "\156\67\173\74\165")) and (info.numparams == 0)) then
-					reloadFn = obj
-					local upvalues = debug.getupvalues(obj)
-					for k = 2 - 1, #upvalues do
-						local v = upvalues[k]
-						if ((type(v) == decryption("\32\182\75\26\185", "\38\84\215\41\118\220\70")) and (rawget(v, decryption("\115\3\48\0\251\94\2\3\31\243\95", "\158\48\118\66\114")) ~= nil)) then
-							cachedGunTable = v
-							break
-						end
-					end
-				elseif ((info.name == decryption("\142\53\5\63\99\130\238\165", "\155\203\68\112\86\19\197")) and not cachedGunTable) then
-					local upvalues = debug.getupvalues(obj)
-					for k = 620 - (555 + 64), #upvalues do
-						local v = upvalues[k]
-						if ((type(v) == decryption("\82\220\52\240\69", "\152\38\189\86\156\32\24\133")) and (rawget(v, decryption("\223\66\181\84\249\89\179\103\241\90\168", "\38\156\55\199")) ~= nil)) then
-							cachedGunTable = v
-							break
-						end
-					end
-				end
-			end
-		end
+        if type(obj) == "function" and islclosure(obj) then
+            local info = debug.getinfo(obj)
 
-		if (reloadFn and cachedGunTable) then
-			break
-		end
-	end
+            if info then
+                if info.name == "Reload" and info.numparams == 0 then
+                    reloadFn = obj
+                    local upvalues = debug.getupvalues(obj)
 
-	return cachedGunTable ~= nil
+                    for k = 1, #upvalues do
+                        local v = upvalues[k]
+                        if type(v) == "table" and rawget(v, "CurrentAmmo") ~= nil then
+                            cachedGunTable = v
+                            break
+                        end
+                    end
+
+                elseif info.name == "EquipGun" and not cachedGunTable then
+                    local upvalues = debug.getupvalues(obj)
+
+                    for k = 1, #upvalues do
+                        local v = upvalues[k]
+                        if type(v) == "table" and rawget(v, "CurrentAmmo") ~= nil then
+                            cachedGunTable = v
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        if reloadFn and cachedGunTable then break end
+    end
+    
+    return (cachedGunTable ~= nil)
 end
 
 task.spawn(InitializeGunData)
@@ -928,52 +894,37 @@ local function RenderDrawingESP()
 end
 
 local function GetScpPosition(scpId)
-	local scpFolder = workspace:FindFirstChild(decryption("\226\224\235\54", "\126\177\163\187\69\134\219\167"))
+    local scpFolder = Workspace:FindFirstChild("SCPs")
 
-	if not scpFolder then
-		return nil
-	end
+    if not scpFolder then 
+        return nil 
+    end
 
-	local model = scpFolder:FindFirstChild(decryption("\16\238\26\136", "\156\67\173\74\165") .. scpId)
+    local model = scpFolder:FindFirstChild("SCP-" .. scpId)
 
-	if not model then
-		return nil
-	end
+    if not model then 
+        return nil 
+    end
 
-	if (scpId == decryption("\100\238\31", "\38\84\215\41\118\220\70")) then
-		local scpPart = model:FindFirstChild(decryption("\0\79\116", "\158\48\118\66\114"))
+    if scpId == "096" then
+        local scpPart = model:FindFirstChild("096")
+        if scpPart then return scpPart.Position end
+    elseif scpId == "131" then
+        local red = model:FindFirstChild("Red")
+        local yellow = model:FindFirstChild("Yellow")
+        if red and yellow and red:FindFirstChild("HumanoidRootPart") then return red.HumanoidRootPart.Position end
+    elseif scpId == "066" then
+        local body = model:FindFirstChild("Body")
+        if body then return body.Position end
+    elseif scpId == "106" or scpId:sub(1,3) == "939" then
+        local root = model:FindFirstChild("RootPart") or model:FindFirstChild("HumanoidRootPart")
+        if root then return root.Position end
+    else
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp then return hrp.Position end
+    end
 
-		if scpPart then
-			return scpPart.Position
-		end
-	elseif (scpId == decryption("\250\119\65", "\155\203\68\112\86\19\197")) then
-		local da = model:FindFirstChild(decryption("\116\216\50", "\152\38\189\86\156\32\24\133"))
-		local si = model:FindFirstChild(decryption("\197\82\171\74\243\64", "\38\156\55\199"))
-		
-        if (da and si and da:FindFirstChild(decryption("\128\104\113\41\29\123\243\71\154\114\115\60\35\117\232\87", "\35\200\29\28\72\115\20\154"))) then
-			return da.HumanoidRootPart.Position
-		end
-	elseif (scpId == decryption("\73\233\135", "\84\121\223\177\191\237\76")) then
-		local body = model:FindFirstChild(decryption("\153\89\205\185", "\161\219\54\169\192\90\48\80"))
-		
-        if body then
-			return body.Position
-		end
-	elseif ((scpId == decryption("\24\18\86", "\69\41\34\96")) or (scpId:sub(2 - 1, 8 - 5) == decryption("\229\144\142", "\75\220\163\183\106\98"))) then
-		local root = model:FindFirstChild(decryption("\48\181\132\35\233\3\168\159", "\185\98\218\235\87")) or model:FindFirstChild(decryption("\227\41\42\231\208\165\194\56\21\233\209\190\251\61\53\242", "\202\171\92\71\134\190"))
-		
-        if root then
-			return root.Position
-		end
-	else
-		local hrp = model:FindFirstChild(decryption("\1\212\33\137\39\206\37\140\27\206\35\156\25\192\62\156", "\232\73\161\76"))
-
-		if hrp then
-			return hrp.Position
-		end
-	end
-
-	return nil
+    return nil
 end
 
 local function CheckScpStatuses()
@@ -1453,7 +1404,7 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
                         if user and user:IsA("TextLabel") and string.find(user.Text, "MetatableIndex", 1, true) then
                             user.Text = string.gsub(user.Text, "MetatableIndex", plr.Name)
                         end
-
+                        
                         if back and back:IsA("TextLabel") and string.find(back.Text, "MetatableIndex", 1, true) then
                             back.Text = string.gsub(back.Text, "MetatableIndex", plr.Name)
                         end
@@ -1586,6 +1537,8 @@ task.spawn(function()
 
                     return oldFire(self, p1, ...)
                 end
+
+                print("patched rayfire")
             end
 
             break
@@ -1626,7 +1579,7 @@ task.spawn(function()
                         local reloadDelay = (cachedGunTable.Pistol and 1.25 or 2.25) + 0.3
                         task.wait(reloadDelay)
                     else
-                        warn("reload execution error:", err)
+                        warn("Reload execution error:", err)
                     end
                 end
             end
