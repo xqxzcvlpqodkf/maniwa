@@ -1,4 +1,5 @@
 --!nocheck
+
 local HttpService = game:GetService("HttpService")
 local fetchRequest = request or http_request or syn.request
 
@@ -157,7 +158,6 @@ local Connections = {}
 local PlayerDropdown = nil
 local ScpLabels = {}
 local ScpStatusCache = {}
-local OriginalTagsCache = {} -- Cache for restoring original overhead tags
 
 local DEFAULT_FIRE_DELAY = 0.15
 local LastFireTime = 0
@@ -903,7 +903,6 @@ end
 local function UnloadScript()
     ScriptRunning = false
     
-    -- Restore original names dynamically before disconnecting the loops
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
     if playerGui then
         local leaderboard = playerGui:FindFirstChild("Leaderboard")
@@ -930,12 +929,12 @@ local function UnloadScript()
                 local tag = head:FindFirstChild("Tag")
                 if tag then
                     local user = tag:FindFirstChild("User")
-                    if user and user:IsA("TextLabel") and user.Text == "MetatableIndex" then
-                        user.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].User) or plr.Name
+                    if user and user:IsA("TextLabel") and string.find(user.Text, "MetatableIndex", 1, true) then
+                        user.Text = string.gsub(user.Text, "MetatableIndex", plr.Name)
                     end
                     local back = tag:FindFirstChild("Back")
-                    if back and back:IsA("TextLabel") and back.Text == "MetatableIndex" then
-                        back.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].Back) or plr.Name
+                    if back and back:IsA("TextLabel") and string.find(back.Text, "MetatableIndex", 1, true) then
+                        back.Text = string.gsub(back.Text, "MetatableIndex", plr.Name)
                     end
                 end
             end
@@ -1295,22 +1294,18 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
                     local back = tag:FindFirstChild("Back")
                     
                     if State.StreamerMode then
-                        if user and user:IsA("TextLabel") and user.Text ~= "MetatableIndex" then
-                            OriginalTagsCache[plr.Name] = OriginalTagsCache[plr.Name] or {}
-                            OriginalTagsCache[plr.Name].User = user.Text
-                            user.Text = "MetatableIndex"
+                        if user and user:IsA("TextLabel") and string.find(user.Text, plr.Name, 1, true) then
+                            user.Text = string.gsub(user.Text, plr.Name, "MetatableIndex")
                         end
-                        if back and back:IsA("TextLabel") and back.Text ~= "MetatableIndex" then
-                            OriginalTagsCache[plr.Name] = OriginalTagsCache[plr.Name] or {}
-                            OriginalTagsCache[plr.Name].Back = back.Text
-                            back.Text = "MetatableIndex"
+                        if back and back:IsA("TextLabel") and string.find(back.Text, plr.Name, 1, true) then
+                            back.Text = string.gsub(back.Text, plr.Name, "MetatableIndex")
                         end
                     else
-                        if user and user:IsA("TextLabel") and user.Text == "MetatableIndex" then
-                            user.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].User) or plr.Name
+                        if user and user:IsA("TextLabel") and string.find(user.Text, "MetatableIndex", 1, true) then
+                            user.Text = string.gsub(user.Text, "MetatableIndex", plr.Name)
                         end
-                        if back and back:IsA("TextLabel") and back.Text == "MetatableIndex" then
-                            back.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].Back) or plr.Name
+                        if back and back:IsA("TextLabel") and string.find(back.Text, "MetatableIndex", 1, true) then
+                            back.Text = string.gsub(back.Text, "MetatableIndex", plr.Name)
                         end
                     end
                 end
