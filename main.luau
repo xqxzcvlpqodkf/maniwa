@@ -157,6 +157,7 @@ local Connections = {}
 local PlayerDropdown = nil
 local ScpLabels = {}
 local ScpStatusCache = {}
+local OriginalTagsCache = {} -- Cache for restoring original overhead tags
 
 local DEFAULT_FIRE_DELAY = 0.15
 local LastFireTime = 0
@@ -632,7 +633,7 @@ local function GetKeycardLevel(player)
 
     CheckContainer(player.Character)
     local backpack = player:FindFirstChildOfClass("Backpack")
-    if backpack then CheckContainer(backpack) end
+    if backpack then CheckContainer(container) end
     return bestCard
 end
 
@@ -901,6 +902,45 @@ end
 
 local function UnloadScript()
     ScriptRunning = false
+    
+    -- Restore original names dynamically before disconnecting the loops
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+    if playerGui then
+        local leaderboard = playerGui:FindFirstChild("Leaderboard")
+        if leaderboard then
+            local content = leaderboard:FindFirstChild("Content")
+            if content then
+                for _, button in ipairs(content:GetChildren()) do
+                    if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
+                        local front = button:FindFirstChild("Front")
+                        if front and front:IsA("TextLabel") and string.find(front.Text, "MetatableIndex", 1, true) then
+                            front.Text = string.gsub(front.Text, "MetatableIndex", button.Name)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local char = plr.Character
+        if char then
+            local head = char:FindFirstChild("Head")
+            if head then
+                local tag = head:FindFirstChild("Tag")
+                if tag then
+                    local user = tag:FindFirstChild("User")
+                    if user and user:IsA("TextLabel") and user.Text == "MetatableIndex" then
+                        user.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].User) or plr.Name
+                    end
+                    local back = tag:FindFirstChild("Back")
+                    if back and back:IsA("TextLabel") and back.Text == "MetatableIndex" then
+                        back.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].Back) or plr.Name
+                    end
+                end
+            end
+        end
+    end
 
     for key in pairs(State) do
         if typeof(State[key]) == "boolean" then
@@ -944,7 +984,7 @@ local Window = Rayfield:CreateWindow({
     Name = "SCP | Roleplay",
     Icon = 0,
     LoadingTitle = "SCP Roleplay Script",
-    LoadingSubtitle = "by Assistant",
+    LoadingSubtitle = "by rare",
     Theme = "Default",
     Width = 650,
     Height = 600,
@@ -1220,17 +1260,21 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
             end
         end
 
-        if State.StreamerMode then
-            local leaderboard = playerGui:FindFirstChild("Leaderboard")
-            if leaderboard then
-                local content = leaderboard:FindFirstChild("Content")
-                if content then
-                    for _, button in ipairs(content:GetChildren()) do
-                        if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
-                            local front = button:FindFirstChild("Front")
-                            if front and front:IsA("TextLabel") then
+        local leaderboard = playerGui:FindFirstChild("Leaderboard")
+        if leaderboard then
+            local content = leaderboard:FindFirstChild("Content")
+            if content then
+                for _, button in ipairs(content:GetChildren()) do
+                    if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
+                        local front = button:FindFirstChild("Front")
+                        if front and front:IsA("TextLabel") then
+                            if State.StreamerMode then
                                 if string.find(front.Text, button.Name, 1, true) then
                                     front.Text = string.gsub(front.Text, button.Name, "MetatableIndex")
+                                end
+                            else
+                                if string.find(front.Text, "MetatableIndex", 1, true) then
+                                    front.Text = string.gsub(front.Text, "MetatableIndex", button.Name)
                                 end
                             end
                         end
@@ -1240,21 +1284,33 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
         end
     end
 
-    if State.StreamerMode then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            local char = plr.Character
-            if char then
-                local head = char:FindFirstChild("Head")
-                if head then
-                    local tag = head:FindFirstChild("Tag")
-                    if tag then
-                        local user = tag:FindFirstChild("User")
-                        if user and user:IsA("TextLabel") then
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local char = plr.Character
+        if char then
+            local head = char:FindFirstChild("Head")
+            if head then
+                local tag = head:FindFirstChild("Tag")
+                if tag then
+                    local user = tag:FindFirstChild("User")
+                    local back = tag:FindFirstChild("Back")
+                    
+                    if State.StreamerMode then
+                        if user and user:IsA("TextLabel") and user.Text ~= "MetatableIndex" then
+                            OriginalTagsCache[plr.Name] = OriginalTagsCache[plr.Name] or {}
+                            OriginalTagsCache[plr.Name].User = user.Text
                             user.Text = "MetatableIndex"
                         end
-                        local back = tag:FindFirstChild("Back")
-                        if back and back:IsA("TextLabel") then
+                        if back and back:IsA("TextLabel") and back.Text ~= "MetatableIndex" then
+                            OriginalTagsCache[plr.Name] = OriginalTagsCache[plr.Name] or {}
+                            OriginalTagsCache[plr.Name].Back = back.Text
                             back.Text = "MetatableIndex"
+                        end
+                    else
+                        if user and user:IsA("TextLabel") and user.Text == "MetatableIndex" then
+                            user.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].User) or plr.Name
+                        end
+                        if back and back:IsA("TextLabel") and back.Text == "MetatableIndex" then
+                            back.Text = (OriginalTagsCache[plr.Name] and OriginalTagsCache[plr.Name].Back) or plr.Name
                         end
                     end
                 end
