@@ -1,10 +1,11 @@
 local HttpService = game:GetService("HttpService")
 local fetch = request or http_request or syn.request
 
-local LatestCommit = HttpService:JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/metamethod/commits/main")).sha
-local LoaderUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/" .. LatestCommit .. "/loader.luau"
-local Dependencies = loadstring(game:HttpGet(LoaderUrl))()
-local rankFlag = Dependencies["rankFlag"]
+local cache = os.time() .. "_" .. math.random(1000, 9999)
+local LoaderUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/main/loader.luau?v=" .. cache
+local scriptContent = game:HttpGet(LoaderUrl)
+local Dependencies = loadstring(scriptContent)()
+local rankFlag = Dependencies and Dependencies["rankFlag"]
 
 local RunService = _G.utility.getService("RunService")
 local Players = _G.utility.getService("Players")
