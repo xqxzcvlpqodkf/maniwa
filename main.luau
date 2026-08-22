@@ -156,6 +156,7 @@ local DrawingESPCache = {}
 local ScpCache = {}
 local Connections = {}
 local PlayerDropdown = nil
+local LastEquippedTool = nil
 local ScpLabels = {}
 local ScpStatusCache = {}
 
@@ -349,8 +350,19 @@ local function GetMuzzlePosition(character, equippedTool)
 end
 
 local function CheckLineOfSight(origin, targetPos, localChar, targetChar)
-    RaycastParamsObj.FilterDescendantsInstances = {localChar, targetChar}
+    local ignoreList = {}
+    local players = Players:GetPlayers()
+
+    for i = 1, #players do
+        local char = players[i].Character
+        if char then
+            table.insert(ignoreList, char)
+        end
+    end
+
+    RaycastParamsObj.FilterDescendantsInstances = ignoreList
     local Result = workspace:Raycast(origin, targetPos - origin, RaycastParamsObj)
+
     return Result == nil
 end
 
@@ -1150,7 +1162,19 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
 
     local EquippedTool = LocalChar:FindFirstChildOfClass("Tool")
 
-    if not EquippedTool then return end
+    if not EquippedTool then
+        cachedGunTable = nil
+        reloadFn = nil
+        LastEquippedTool = nil
+        return
+    end
+
+    if LastEquippedTool ~= EquippedTool then
+        cachedGunTable = nil
+        reloadFn = nil
+        LastEquippedTool = EquippedTool
+        lastGcScan = 0
+    end
 
     if not cachedGunTable then
         InitializeGunData()
@@ -1176,6 +1200,7 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
 
                 if weaponUI and weaponUI:FindFirstChild("Clip") then
                     local ammoStr = tostring(math.floor(cachedGunTable.CurrentAmmo))
+
                     weaponUI.Clip.Text = ammoStr
 
                     if weaponUI.Clip:FindFirstChild("Back") then
