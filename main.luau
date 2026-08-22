@@ -50,6 +50,7 @@ local State = {
     SilentAimFOVRadius = 150,
     SilentAimFOVDraw = nil,
     TargetPart = "Head",
+    HitSound = "CS2",
 }
 
 local SCP_LIST = {
@@ -449,6 +450,9 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             if State.VisualizeShots then
                 VisualizeShot(MuzzlePos, TheirPart.Position)
             end
+            
+            print("Damaged somebody!")
+            -- ADD HIT SOUND PLAY LOGIC HERE
 
             setnamecallmethod(method)
             return originalNamecall(self, unpack(args))
@@ -947,6 +951,19 @@ CombatTab:CreateDropdown({
         State.TargetPart = selected
     end,
 })
+
+CombatTab:CreateDropdown({
+    Name = "Hit Sound",
+    Options = {"CS2", "CS2 Variant", "Neverlose", "Rust", "Skeet"},
+    CurrentOption = {"CS2"},
+    MultipleOptions = false,
+    Flag = "HitSoundDropdown",
+    Callback = function(Option)
+        local selected = typeof(Option) == "table" and Option[1] or Option
+        State.HitSound = selected
+    end,
+})
+
 CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAuraToggle", Callback = function(Value) State.KillAura = Value end })
 CombatTab:CreateToggle({ Name = "Visualize Shots", CurrentValue = false, Flag = "VisualizeShotsToggle", Callback = function(Value) State.VisualizeShots = Value end })
 
@@ -1036,6 +1053,9 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
         CachedRemoteArgs[3] = Data.hitPart
 
         RemoteEvent:FireServer(unpack(CachedRemoteArgs))
+
+        print("Damaged somebody!")
+        -- ADD HIT SOUND PLAY LOGIC HERE
 
         if State.VisualizeShots then
             VisualizeShot(Data.muzzlePos, Data.hitPos)
