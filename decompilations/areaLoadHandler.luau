@@ -1,20 +1,6 @@
 -- Script Path: game:GetService("Players")["1IllIlIIIIlIIlllIllI"].PlayerGui.AreaLoading.AreaLoadHandler
--- Took 0.1s to decompile.
--- Executor: Real (2.1.0)
-
---[[
-__________                   __               __    __________              .__
-\______   \_______  ____    |__| ____   _____/  |_  \______   \ ____ _____  |  |
- |     ___/\_  __ \/  _ \   |  |/ __ \_/ ___\   __\  |       _// __ \\__  \ |  |
- |    |     |  | \(  <_> )  |  \  ___/\  \___|  |    |    |   \  ___/ / __ \|  |__
- |____|     |__|   \____/\__|  |\___  >\___  >__|    |____|_  /\___  >____  /____/
-                        \______|    \/     \/               \/     \/     \/
-]]
---                           Project Real  |  Luau Decompiler
---                                   Made by @zinvera
---       File: Players.1IllIlIIIIlIIlllIllI.PlayerGui.AreaLoading.AreaLoadHandler
---                                Dumped in 0.101 seconds
---                         Bytecode version 9  |  179 functions
+-- 0.1s for decompilation.
+-- Executor: 67 (2.6.7)
 
 local u23, u24
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

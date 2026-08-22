@@ -1,20 +1,6 @@
 -- Script Path: game:GetService("Players")["1IllIlIIIIlIIlllIllI"].PlayerGui.Tablet.TabletHandler
--- Took 0.04s to decompile.
--- Executor: Real (2.1.0)
-
---[[
-__________                   __               __    __________              .__
-\______   \_______  ____    |__| ____   _____/  |_  \______   \ ____ _____  |  |
- |     ___/\_  __ \/  _ \   |  |/ __ \_/ ___\   __\  |       _// __ \\__  \ |  |
- |    |     |  | \(  <_> )  |  \  ___/\  \___|  |    |    |   \  ___/ / __ \|  |__
- |____|     |__|   \____/\__|  |\___  >\___  >__|    |____|_  /\___  >____  /____/
-                        \______|    \/     \/               \/     \/     \/
-]]
---                           Project Real  |  Luau Decompiler
---                                   Made by @zinvera
---           File: Players.1IllIlIIIIlIIlllIllI.PlayerGui.Tablet.TabletHandler
---                               Dumped in 0.0471 seconds
---                         Bytecode version 9  |  119 functions
+-- 0.04s for decompilation.
+-- Executor: 67 (2.6.7)
 
 local u915, u917, u919
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

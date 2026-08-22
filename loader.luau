@@ -1,9 +1,9 @@
 --!nocheck
 
 local HttpService = game:GetService("HttpService")
-local LatestCommit = HttpService:JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/maniwa/commits/main")).sha
-local BaseUrl = "https://api.github.com/repos/xqxzcvlpqodkf/maniwa/contents/dependencies?ref=" .. LatestCommit
-local RawCommitUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/maniwa/" .. LatestCommit .. "/dependencies/"
+local LatestCommit = HttpService:JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/metamethod/commits/main")).sha
+local BaseUrl = "https://api.github.com/repos/xqxzcvlpqodkf/metamethod/contents/dependencies?ref=" .. LatestCommit
+local RawCommitUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/" .. LatestCommit .. "/dependencies/"
 
 local Dependencies, ModulesToRun = {}, {}
 
