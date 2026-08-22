@@ -599,7 +599,7 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
     if not LocalHead then return nil, nil end
 
     local LocalPos = LocalHead.Position
-    local ClosestPlayer = nil
+    local ClosestTarget = nil
     local ClosestDistance = math.huge
     local players = Players:GetPlayers()
 
@@ -633,7 +633,7 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
                 
                 if CheckLineOfSight(MuzzlePos, TargetPos, localChar, TargetChar) then
                     ClosestDistance = Distance
-                    ClosestPlayer = TargetPlayer
+                    ClosestTarget = TargetPlayer
                     
                     TargetDataCache.hitPart = TargetPart
                     TargetDataCache.hitPos = TargetPos
@@ -643,7 +643,41 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
         end
     end
 
-    return ClosestPlayer, (ClosestPlayer and TargetDataCache or nil)
+    local scpFolder = Workspace:FindFirstChild("SCPs")
+    if scpFolder then
+        for _, scpModel in ipairs(scpFolder:GetChildren()) do
+            if scpModel:IsA("Model") then
+                local TargetHumanoid = scpModel:FindFirstChildOfClass("Humanoid")
+                local TargetPart = scpModel:FindFirstChild(State.TargetPart) 
+                    or scpModel:FindFirstChild("Head") 
+                    or scpModel:FindFirstChild("HumanoidRootPart") 
+                    or scpModel:FindFirstChild("RootPart")
+                    or scpModel:FindFirstChild("Body")
+                    or scpModel:FindFirstChild("096")
+                    or scpModel:FindFirstChildOfClass("BasePart")
+
+                if TargetPart and (not TargetHumanoid or TargetHumanoid.Health > 0) then
+                    local TargetPos = TargetPart.Position
+                    local Distance = (TargetPos - LocalPos).Magnitude
+
+                    if Distance < ClosestDistance then
+                        local MuzzlePos = GetMuzzlePosition(localChar, equippedTool)
+
+                        if CheckLineOfSight(MuzzlePos, TargetPos, localChar, scpModel) then
+                            ClosestDistance = Distance
+                            ClosestTarget = scpModel
+
+                            TargetDataCache.hitPart = TargetPart
+                            TargetDataCache.hitPos = TargetPos
+                            TargetDataCache.muzzlePos = MuzzlePos
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return ClosestTarget, (ClosestTarget and TargetDataCache or nil)
 end
 
 local function GetServerRegion()
@@ -1256,9 +1290,9 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
     
     if CurrentTime - LastFireTime < FireDelay then return end
 
-    local TargetPlayer, Data = GetClosestVisibleTarget(LocalChar, EquippedTool)
+    local Target, Data = GetClosestVisibleTarget(LocalChar, EquippedTool)
 
-    if Data and TargetPlayer then
+    if Data and Target then
         if cachedGunTable and type(cachedGunTable.CurrentAmmo) == "number" then
             if cachedGunTable.CurrentAmmo <= 0 then return end
             
