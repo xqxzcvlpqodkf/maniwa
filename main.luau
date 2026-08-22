@@ -372,8 +372,8 @@ local function IsValidTarget(player)
             return false
         end
     else
-        local isRogueMedic = TargetTeam == "Medical Department" and HasWeapon(player)
-        if not isRogueMedic and IsWhitelisted(player) then
+        local isRogueNonCombatant = (TargetTeam == "Medical Department" or TargetTeam == "Scientific Department") and HasWeapon(player)
+        if not isRogueNonCombatant and IsWhitelisted(player) then
             return false
         end
     end
@@ -643,8 +643,8 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
                 continue
             end
         else
-            local isRogueMedic = targetTeam == "Medical Department" and HasWeapon(TargetPlayer)
-            if not isRogueMedic and IsWhitelisted(TargetPlayer) then continue end
+            local isRogueNonCombatant = (targetTeam == "Medical Department" or targetTeam == "Scientific Department") and HasWeapon(TargetPlayer)
+            if not isRogueNonCombatant and IsWhitelisted(TargetPlayer) then continue end
         end
 
         local TargetChar = TargetPlayer.Character
@@ -736,7 +736,7 @@ local function GetKeycardLevel(player)
     CheckContainer(player.Character)
 
     local backpack = player:FindFirstChildOfClass("Backpack")
-    if backpack then CheckContainer(container) end
+    if backpack then CheckContainer(backpack) end
 
     return bestCard
 end
