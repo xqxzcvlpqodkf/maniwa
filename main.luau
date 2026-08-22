@@ -1,3 +1,4 @@
+--!nocheck
 local HttpService = game:GetService("HttpService")
 local fetchRequest = request or http_request or syn.request
 
@@ -179,8 +180,8 @@ local function CheckForMod(player)
     end
 end
 
-local function PlayHitSound()
-    if not State.HitSoundsEnabled then return end
+local function PlayHitSound(force)
+    if not force and not State.HitSoundsEnabled then return end
     if State.HitSound == "None" then return end
     
     local fileName = HitSoundFiles[State.HitSound]
@@ -491,53 +492,54 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     
     if not checkcaller() and method == "FireServer" and self == RemoteEvent then
-        local target, dist = GetClosestPlayerInFOV()
+        local args = {...}
+        local localChar = LocalPlayer.Character
+        local modifiedArgs = false
 
-        if target then
-            local localChar = LocalPlayer.Character
-            
-            if not localChar then 
-                setnamecallmethod(method)
-                return originalNamecall(self, ...) 
+        if State.SilentAim then
+            local target, dist = GetClosestPlayerInFOV()
+            if target and localChar then
+                local EquippedTool = localChar:FindFirstChildOfClass("Tool")
+                local MuzzlePos = GetMuzzlePosition(localChar, EquippedTool)
+                local TheirPart = target.Character and target.Character:FindFirstChild(State.TargetPart)
+
+                if TheirPart and MuzzlePos then
+                    if type(args[1]) == "table" and type(args[1][1]) == "table" then
+                        local isPierce = args[1][1][4]
+                        if isPierce == nil then isPierce = true end
+
+                        args[1][1] = {
+                            TheirPart.Position.X,
+                            TheirPart.Position.Y,
+                            TheirPart.Position.Z,
+                            isPierce
+                        }
+                    end
+
+                    args[2] = MuzzlePos
+                    args[3] = TheirPart
+                    modifiedArgs = true
+
+                    if State.VisualizeShots then
+                        VisualizeShot(MuzzlePos, TheirPart.Position)
+                    end
+                end
             end
+        end
 
-            local EquippedTool = localChar:FindFirstChildOfClass("Tool")
-            local MuzzlePos = GetMuzzlePosition(localChar, EquippedTool)
-            local TheirPart = target.Character and target.Character:FindFirstChild(State.TargetPart)
-
-            if not TheirPart or not MuzzlePos then
-                setnamecallmethod(method)
-                return originalNamecall(self, ...)
+        local hitPart = args[3]
+        if hitPart and typeof(hitPart) == "Instance" and hitPart:IsA("BasePart") then
+            local model = hitPart:FindFirstAncestorOfClass("Model")
+            if model and model ~= localChar and model:FindFirstChildOfClass("Humanoid") then
+                PlayHitSound()
             end
-
-            local args = {...}
-            
-            if type(args[1]) == "table" and type(args[1][1]) == "table" then
-                local isPierce = args[1][1][4]
-                if isPierce == nil then isPierce = true end
-
-                args[1][1] = {
-                    TheirPart.Position.X,
-                    TheirPart.Position.Y,
-                    TheirPart.Position.Z,
-                    isPierce
-                }
-            end
-
-            args[2] = MuzzlePos
-            args[3] = TheirPart
-
-            if State.VisualizeShots then
-                VisualizeShot(MuzzlePos, TheirPart.Position)
-            end
-
-            PlayHitSound()
-
-            setnamecallmethod(method)
-            return originalNamecall(self, unpack(args))
         end
 
         setnamecallmethod(method)
+        if modifiedArgs then
+            return originalNamecall(self, unpack(args))
+        end
+        return originalNamecall(self, ...)
     end
     
     return originalNamecall(self, ...)
@@ -940,7 +942,7 @@ end
 local Window = Rayfield:CreateWindow({
     Name = "SCP | Roleplay",
     Icon = 0,
-    LoadingTitle = "Utility Script",
+    LoadingTitle = "SCP Roleplay Script",
     LoadingSubtitle = "by Assistant",
     Theme = "Default",
     Width = 650,
@@ -1052,6 +1054,13 @@ CombatTab:CreateDropdown({
     end,
 })
 
+CombatTab:CreateButton({
+    Name = "Preview Hit Sound",
+    Callback = function()
+        PlayHitSound(true)
+    end
+})
+
 CombatTab:CreateDivider()
 
 CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAuraToggle", Callback = function(Value) State.KillAura = Value end })
@@ -1145,7 +1154,7 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
         CachedRemoteArgs[3] = Data.hitPart
 
         RemoteEvent:FireServer(unpack(CachedRemoteArgs))
-        
+
         PlayHitSound()
 
         if State.VisualizeShots then
