@@ -324,6 +324,30 @@ local function IsClassDHostile(player)
     return false
 end
 
+local function HasWeapon(player)
+    local char = player.Character
+    if char then
+        local children = char:GetChildren()
+        for i = 1, #children do
+            local obj = children[i]
+            if obj:IsA("Tool") and (obj:FindFirstChild("_Mag") or obj:FindFirstChild("CurrentAmmo")) then
+                return true
+            end
+        end
+    end
+    local bp = player:FindFirstChildOfClass("Backpack")
+    if bp then
+        local children = bp:GetChildren()
+        for i = 1, #children do
+            local obj = children[i]
+            if obj:IsA("Tool") and (obj:FindFirstChild("_Mag") or obj:FindFirstChild("CurrentAmmo")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function IsWhitelisted(tP)
     local MyTeam = LocalPlayer.Team and LocalPlayer.Team.Name or "Unknown"
     local TargetTeam = tP.Team and tP.Team.Name or "Unknown"
@@ -347,7 +371,8 @@ local function IsValidTarget(player)
             return false
         end
     else
-        if IsWhitelisted(player) then
+        local isRogueMedic = TargetTeam == "Medical Department" and HasWeapon(player)
+        if not isRogueMedic and IsWhitelisted(player) then
             return false
         end
     end
@@ -617,7 +642,8 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
                 continue
             end
         else
-            if IsWhitelisted(TargetPlayer) then continue end
+            local isRogueMedic = targetTeam == "Medical Department" and HasWeapon(TargetPlayer)
+            if not isRogueMedic and IsWhitelisted(TargetPlayer) then continue end
         end
 
         local TargetChar = TargetPlayer.Character
