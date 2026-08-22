@@ -1,10 +1,10 @@
-# ⚡ Metamethod | SCP: Roleplay
+# Metamethod | SCP: Roleplay
 
 A Luau script built specifically for **SCP: Roleplay**.
 
 ---
 
-### 🚀 Script Loader
+### Script Loader
 
 Paste the code below into your executor to run the latest build:
 

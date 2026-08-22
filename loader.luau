@@ -20,7 +20,7 @@ if Success and Response then
 				if Chunk then
 					table.insert(ModulesToRun, { Name = File.name, Chunk = Chunk })
 				else
-					warn("[Loader] Syntax error in " .. File.name .. ": " .. tostring(Err))
+					warn("(bug) syntax error in " .. File.name .. ": " .. tostring(Err))
 				end
 			end
 		end
@@ -44,7 +44,7 @@ if Success and Response then
 					end
 				end
 			else
-				warn("[Loader] Runtime error in " .. Item.Name .. ": " .. tostring(Val1))
+				warn("(bug) Runtime error in " .. Item.Name .. ": " .. tostring(Val1))
 			end
 			
 			LoadedCount += 1
@@ -53,7 +53,7 @@ if Success and Response then
 
 	repeat task.wait() until LoadedCount == #ModulesToRun and _G.utility ~= nil
 else
-	warn("[Loader] Failed to fetch directory API:", tostring(Response))
+	warn("(bug) Failed to fetch directory API:", tostring(Response))
 end
 
 return Dependencies

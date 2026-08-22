@@ -1,7 +1,28 @@
 --!nocheck
 
+local obf_stringchar = string.char;
+local obf_stringbyte = string.byte;
+local obf_stringsub = string.sub;
+local obf_bitlib = bit32 or bit;
+local obf_XOR = obf_bitlib.bxor;
+local obf_tableconcat = table.concat;
+local obf_tableinsert = table.insert;
+
+-- oh dont worry i wont obfuscate everything
+-- probably 😂
+
+local function decryption(s,k)
+	local result = {}
+
+	for i = 1, #s do
+		obf_tableinsert(result, obf_stringchar(obf_XOR(obf_stringbyte(obf_stringsub(s, i, i + 1)), obf_stringbyte(obf_stringsub(k, 1 + (i % #k), 1 + (i % #k) + 1))) % 256))
+	end
+
+	return obf_tableconcat(result)
+end
+
 local HttpService = game:GetService("HttpService")
-local fetchRequest = request or http_request or syn.request
+local fetch = request or http_request or syn.request
 
 local LatestCommit = HttpService:JSONDecode(game:HttpGet("https://api.github.com/repos/xqxzcvlpqodkf/metamethod/commits/main")).sha
 local LoaderUrl = "https://raw.githubusercontent.com/xqxzcvlpqodkf/metamethod/" .. LatestCommit .. "/loader.luau"
@@ -24,7 +45,7 @@ local AvailableHitSounds = {}
 local HitSoundFiles = {}
 local apiUrl = "https://api.github.com/repos/xqxzcvlpqodkf/metamethod/contents/hit"
 
-local apiResponse = fetchRequest({
+local apiResponse = fetch({
     Url = apiUrl,
     Method = "GET"
 })
@@ -36,6 +57,7 @@ if apiResponse.Success and apiResponse.StatusCode == 200 then
         if fileInfo.type == "file" then
             local fileName = fileInfo.name
             local soundName = string.gsub(fileName, "%.mp3", "")
+
             soundName = string.gsub(soundName, "%.wav", "")
             soundName = string.gsub(soundName, "%.ogg", "")
 
@@ -43,10 +65,11 @@ if apiResponse.Success and apiResponse.StatusCode == 200 then
                 table.insert(AvailableHitSounds, soundName)
                 HitSoundFiles[soundName] = fileName
             else
-                local fileResponse = fetchRequest({
+                local fileResponse = fetch({
                     Url = fileInfo.download_url,
                     Method = "GET"
                 })
+
                 if fileResponse.Success and fileResponse.StatusCode == 200 then
                     writefile(fileName, fileResponse.Body)
                     table.insert(AvailableHitSounds, soundName)
@@ -184,14 +207,26 @@ local function CheckForMod(player)
 end
 
 local function PlayHitSound(force)
-    if not force and not State.HitSoundsEnabled then return end
-    if State.HitSound == "None" then return end
+    if not force and not State.HitSoundsEnabled then 
+        return 
+    end
     
-    local fileName = HitSoundFiles[State.HitSound]
-    if not fileName or not isfile(fileName) then return end
+    if State.HitSound == "None" then 
+        return 
+    end
+
+    if not getcustomasset then 
+        return 
+    end
+    
+    local fN = HitSoundFiles[State.HitSound]
+
+    if not fN or not isfile(fN) then 
+        return 
+    end
     
     local sound = Instance.new("Sound")
-    sound.SoundId = getcustomasset(fileName)
+    sound.SoundId = getcustomasset(fN)
     sound.Parent = workspace
     
     if not sound.IsLoaded then
@@ -207,6 +242,7 @@ local function PlayHitSound(force)
 end
 
 local function CreateDrawingESP(player)
+    if not Drawing then return end
     if DrawingESPCache[player] then return end
     
     local esp = {
@@ -270,12 +306,14 @@ end
 
 local function RemoveDrawingESP(player)
     local esp = DrawingESPCache[player]
+
     if esp then
         for _, obj in pairs(esp) do
             if obj and obj.Remove then
                 obj:Remove()
             end
         end
+
         DrawingESPCache[player] = nil
     end
 end
@@ -284,26 +322,40 @@ local function ClearAllDrawingESP()
     for player, _ in pairs(DrawingESPCache) do
         RemoveDrawingESP(player)
     end
+
     DrawingESPCache = {}
 end
 
 local function IsClassDHostile(player)
-    local char = player.Character
-    if not char then return false end
-    if player.Team and player.Team.Name ~= "Class - D" then return false end
-    if char:HasTag("EquippedGun") then return true end
-    if char:HasTag("Escaped") then return true end
-    if char:HasTag("CrossedLine") then
-        local authorizer = char:FindFirstChild("Authorizer")
+	local char = player.Character
+	
+    if not char then
+		return false
+	end
 
-        if not authorizer or not authorizer:IsA("ObjectValue") or not authorizer.Value then
-            return true
-        end
+	if (player.Team and (player.Team.Name ~= decryption("\242\207\218\54\245\251\138\94\245", "\126\177\163\187\69\134\219\167"))) then
+		return false
+	end
 
-        return false
-    end
+	if char:HasTag(decryption("\6\220\63\204\236\51\200\46\226\233\45", "\156\67\173\74\165")) then
+		return true
+	end
 
-    return false
+	if char:HasTag(decryption("\17\164\74\23\172\35\66", "\38\84\215\41\118\220\70")) then
+		return true
+	end
+
+	if char:HasTag(decryption("\115\4\45\1\237\85\18\14\27\240\85", "\158\48\118\66\114")) then
+		local rizzmas = char:FindFirstChild(decryption("\138\49\4\62\124\183\242\177\33\2", "\155\203\68\112\86\19\197"))
+		
+        if (not rizzmas or not rizzmas:IsA(decryption("\105\223\60\249\67\108\211\249\74\200\51", "\152\38\189\86\156\32\24\133")) or not rizzmas.Value) then
+			return true
+		end
+
+		return false
+	end
+
+	return false
 end
 
 local function IsWhitelisted(tP)
@@ -326,9 +378,9 @@ local function IsValidTarget(player)
         return false
     end
 
-    local isHostileClassD = (TargetTeam == "Class - D" and IsClassDHostile(player))
+    local IsHostileCD = (TargetTeam == "Class - D" and IsClassDHostile(player))
 
-    if IsWhitelisted(player) and not isHostileClassD then
+    if IsWhitelisted(player) and not IsHostileCD then
         return false
     end
 
@@ -346,6 +398,7 @@ local function GetMuzzlePosition(character, equippedTool)
     end
 
     local part = character:FindFirstChild(State.TargetPart) or character:FindFirstChild("Head")
+
     return part.Position
 end
 
@@ -361,6 +414,7 @@ local function CheckLineOfSight(origin, targetPos, localChar, targetChar)
     end
 
     RaycastParamsObj.FilterDescendantsInstances = ignoreList
+
     local Result = workspace:Raycast(origin, targetPos - origin, RaycastParamsObj)
 
     return Result == nil
@@ -375,8 +429,6 @@ local function GetClosestPlayerInFOV()
     local local_char = LocalPlayer.Character
 
     local currentCam = workspace.CurrentCamera
-
-    if not currentCam or not currentCam:IsA("Camera") then return nil, nil end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if IsValidTarget(player) then
@@ -411,42 +463,51 @@ local function GetClosestPlayerInFOV()
 end
 
 local function InitializeGunData()
-    if cachedGunTable and reloadFn then return true end
-    if os.clock() - lastGcScan < 3 then return false end
-    lastGcScan = os.clock()
+	if (cachedGunTable and reloadFn) then
+		return true
+	end
 
-    local gc = getgc(true)
-    for i = 1, #gc do
-        local obj = gc[i]
-        if type(obj) == "function" and islclosure(obj) then
-            local info = debug.getinfo(obj)
-            if info then
-                if info.name == "Reload" and info.numparams == 0 then
-                    reloadFn = obj
-                    local upvalues = debug.getupvalues(obj)
-                    for k = 1, #upvalues do
-                        local v = upvalues[k]
-                        if type(v) == "table" and rawget(v, "CurrentAmmo") ~= nil then
-                            cachedGunTable = v
-                            break
-                        end
-                    end
-                elseif info.name == "EquipGun" and not cachedGunTable then
-                    local upvalues = debug.getupvalues(obj)
-                    for k = 1, #upvalues do
-                        local v = upvalues[k]
-                        if type(v) == "table" and rawget(v, "CurrentAmmo") ~= nil then
-                            cachedGunTable = v
-                            break
-                        end
-                    end
-                end
-            end
-        end
-        if reloadFn and cachedGunTable then break end
-    end
-    
-    return (cachedGunTable ~= nil)
+	if ((os.clock() - lastGcScan) < (5 - 2)) then
+		return false
+	end
+
+	lastGcScan = os.clock()
+	local gc = getgc(true)
+
+	for i = 1, #gc do
+		local obj = gc[i]
+		if ((type(obj) == decryption("\215\214\213\38\242\178\200\16", "\126\177\163\187\69\134\219\167")) and islclosure(obj)) then
+			local info = debug.getinfo(obj)
+			if info then
+				if ((info.name == decryption("\17\200\38\202\253\39", "\156\67\173\74\165")) and (info.numparams == 0)) then
+					reloadFn = obj
+					local upvalues = debug.getupvalues(obj)
+					for k = 2 - 1, #upvalues do
+						local v = upvalues[k]
+						if ((type(v) == decryption("\32\182\75\26\185", "\38\84\215\41\118\220\70")) and (rawget(v, decryption("\115\3\48\0\251\94\2\3\31\243\95", "\158\48\118\66\114")) ~= nil)) then
+							cachedGunTable = v
+							break
+						end
+					end
+				elseif ((info.name == decryption("\142\53\5\63\99\130\238\165", "\155\203\68\112\86\19\197")) and not cachedGunTable) then
+					local upvalues = debug.getupvalues(obj)
+					for k = 620 - (555 + 64), #upvalues do
+						local v = upvalues[k]
+						if ((type(v) == decryption("\82\220\52\240\69", "\152\38\189\86\156\32\24\133")) and (rawget(v, decryption("\223\66\181\84\249\89\179\103\241\90\168", "\38\156\55\199")) ~= nil)) then
+							cachedGunTable = v
+							break
+						end
+					end
+				end
+			end
+		end
+
+		if (reloadFn and cachedGunTable) then
+			break
+		end
+	end
+
+	return cachedGunTable ~= nil
 end
 
 task.spawn(InitializeGunData)
@@ -454,6 +515,7 @@ task.spawn(InitializeGunData)
 local function GetCurrentFireDelay(equippedTool)
     if cachedGunTable and type(cachedGunTable) == "table" then
         local rawRate = cachedGunTable.TBS or cachedGunTable.FireRate or cachedGunTable.Cooldown or cachedGunTable.Delay or cachedGunTable.ShotDelay
+
         if type(rawRate) == "number" and rawRate > 0 then
             return rawRate
         elseif type(cachedGunTable.RPM) == "number" and cachedGunTable.RPM > 0 then
@@ -463,10 +525,13 @@ local function GetCurrentFireDelay(equippedTool)
 
     if equippedTool and GunSettingsFolder then
         local settingModule = GunSettingsFolder:FindFirstChild(equippedTool.Name)
+
         if settingModule and settingModule:IsA("ModuleScript") then
             local success, configData = pcall(require, settingModule)
+
             if success and type(configData) == "table" then
                 local moduleRate = configData.TBS or configData.FireRate or configData.Cooldown or configData.Delay or configData.ShotDelay
+
                 if type(moduleRate) == "number" and moduleRate > 0 then
                     return moduleRate
                 elseif type(configData.RPM) == "number" and configData.RPM > 0 then
@@ -512,6 +577,7 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 
         if State.SilentAim then
             local target, dist = GetClosestPlayerInFOV()
+
             if target and localChar then
                 local EquippedTool = localChar:FindFirstChildOfClass("Tool")
                 local MuzzlePos = GetMuzzlePosition(localChar, EquippedTool)
@@ -542,6 +608,7 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         end
 
         local hitPart = args[3]
+
         if hitPart and typeof(hitPart) == "Instance" and hitPart:IsA("BasePart") then
             local model = hitPart:FindFirstAncestorOfClass("Model")
             if model and model ~= localChar and model:FindFirstChildOfClass("Humanoid") then
@@ -550,9 +617,11 @@ originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         end
 
         setnamecallmethod(method)
+
         if modifiedArgs then
             return originalNamecall(self, unpack(args))
         end
+
         return originalNamecall(self, ...)
     end
     
@@ -616,6 +685,7 @@ end
 
 local function GetKeycardLevel(player)
     if not player.Character then return "None" end
+
     local bestCard = "None"
     local cardRanks = {
         ["L1 Keycard"] = 1, ["L2 Keycard"] = 2, ["L3 Keycard"] = 3,
@@ -635,8 +705,10 @@ local function GetKeycardLevel(player)
     end
 
     CheckContainer(player.Character)
+
     local backpack = player:FindFirstChildOfClass("Backpack")
     if backpack then CheckContainer(container) end
+
     return bestCard
 end
 
@@ -662,6 +734,7 @@ local function GetPlayerNamesList()
     end
 
     if #names == 0 then table.insert(names, "None") end
+
     return names
 end
 
@@ -705,6 +778,7 @@ local function ClearScpESP()
     for model, hl in pairs(ScpCache) do
         if hl then hl:Destroy() end
     end
+
     ScpCache = {}
 end
 
@@ -715,9 +789,11 @@ local function UpdateScpESP()
     end
 
     local scpFolder = Workspace:FindFirstChild("SCPs")
+
     if not scpFolder then ClearScpESP() return end
 
     local currentModels = {}
+
     for _, obj in ipairs(scpFolder:GetChildren()) do
         if obj:IsA("Model") and obj.Name ~= "SCP-938" and obj.Name ~= "SCP-087" then
             currentModels[obj] = true
@@ -776,6 +852,7 @@ local function RenderDrawingESP()
         end
 
         CreateDrawingESP(player)
+
         local esp = DrawingESPCache[player]
 
         local teamColor = player.TeamColor and player.TeamColor.Color or Color3.fromRGB(0, 170, 255)
@@ -819,6 +896,7 @@ local function RenderDrawingESP()
         local textOffset = 0
 
         esp.Role.Visible = State.RoleESP
+
         if State.RoleESP then
             esp.Role.Text = player.Team and string.upper(player.Team.Name) or "NO TEAM"
             esp.Role.Color = teamColor
@@ -827,6 +905,7 @@ local function RenderDrawingESP()
         end
 
         esp.Keycard.Visible = State.KeycardESP
+
         if State.KeycardESP then
             esp.Keycard.Text = string.upper(GetKeycardLevel(player))
             esp.Keycard.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y + boxHeight + textOffset)
@@ -834,6 +913,7 @@ local function RenderDrawingESP()
         end
 
         esp.Weapon.Visible = State.WeaponESP
+
         if State.WeaponESP then
             esp.Weapon.Text = string.upper(GetEquippedWeapon(player))
             esp.Weapon.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y + boxHeight + textOffset)
@@ -848,37 +928,58 @@ local function RenderDrawingESP()
 end
 
 local function GetScpPosition(scpId)
-    local scpFolder = Workspace:FindFirstChild("SCPs")
-    if not scpFolder then return nil end
+	local scpFolder = workspace:FindFirstChild(decryption("\226\224\235\54", "\126\177\163\187\69\134\219\167"))
 
-    local model = scpFolder:FindFirstChild("SCP-" .. scpId)
-    if not model then return nil end
+	if not scpFolder then
+		return nil
+	end
 
-    if scpId == "096" then
-        local scpPart = model:FindFirstChild("096")
-        if scpPart then return scpPart.Position end
-    elseif scpId == "131" then
-        local red = model:FindFirstChild("Red")
-        local yellow = model:FindFirstChild("Yellow")
-        if red and yellow and red:FindFirstChild("HumanoidRootPart") then return red.HumanoidRootPart.Position end
-    elseif scpId == "066" then
-        local body = model:FindFirstChild("Body")
-        if body then return body.Position end
-    elseif scpId == "106" or scpId:sub(1,3) == "939" then
-        local root = model:FindFirstChild("RootPart") or model:FindFirstChild("HumanoidRootPart")
-        if root then return root.Position end
-    else
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then return hrp.Position end
-    end
+	local model = scpFolder:FindFirstChild(decryption("\16\238\26\136", "\156\67\173\74\165") .. scpId)
 
-    return nil
+	if not model then
+		return nil
+	end
+
+	if (scpId == decryption("\100\238\31", "\38\84\215\41\118\220\70")) then
+		local scpPart = model:FindFirstChild(decryption("\0\79\116", "\158\48\118\66\114"))
+
+		if scpPart then
+			return scpPart.Position
+		end
+	elseif (scpId == decryption("\250\119\65", "\155\203\68\112\86\19\197")) then
+		local da = model:FindFirstChild(decryption("\116\216\50", "\152\38\189\86\156\32\24\133"))
+		local si = model:FindFirstChild(decryption("\197\82\171\74\243\64", "\38\156\55\199"))
+		
+        if (da and si and da:FindFirstChild(decryption("\128\104\113\41\29\123\243\71\154\114\115\60\35\117\232\87", "\35\200\29\28\72\115\20\154"))) then
+			return da.HumanoidRootPart.Position
+		end
+	elseif (scpId == decryption("\73\233\135", "\84\121\223\177\191\237\76")) then
+		local body = model:FindFirstChild(decryption("\153\89\205\185", "\161\219\54\169\192\90\48\80"))
+		
+        if body then
+			return body.Position
+		end
+	elseif ((scpId == decryption("\24\18\86", "\69\41\34\96")) or (scpId:sub(2 - 1, 8 - 5) == decryption("\229\144\142", "\75\220\163\183\106\98"))) then
+		local root = model:FindFirstChild(decryption("\48\181\132\35\233\3\168\159", "\185\98\218\235\87")) or model:FindFirstChild(decryption("\227\41\42\231\208\165\194\56\21\233\209\190\251\61\53\242", "\202\171\92\71\134\190"))
+		
+        if root then
+			return root.Position
+		end
+	else
+		local hrp = model:FindFirstChild(decryption("\1\212\33\137\39\206\37\140\27\206\35\156\25\192\62\156", "\232\73\161\76"))
+
+		if hrp then
+			return hrp.Position
+		end
+	end
+
+	return nil
 end
 
 local function CheckScpStatuses()
     for _, scpId in ipairs(SCP_LIST) do
         local pos = GetScpPosition(scpId)
-        local statusText = "UNKNOWN"
+        local statusText = "Unknown"
 
         if not pos then
             statusText = "Not Spawned"
@@ -888,6 +989,7 @@ local function CheckScpStatuses()
         end
 
         local oldStatus = ScpStatusCache[scpId]
+
         if oldStatus and oldStatus ~= statusText and State.NotifyOnChange then
             Rayfield:Notify({
                 Title = "SCP Status Update",
@@ -896,7 +998,9 @@ local function CheckScpStatuses()
                 Image = 4483362458
             })
         end
+
         ScpStatusCache[scpId] = statusText
+
         if ScpLabels[scpId] then
             ScpLabels[scpId]:Set({ Title = "SCP-" .. scpId, Content = "Status: " .. statusText })
         end
@@ -907,14 +1011,18 @@ local function UnloadScript()
     ScriptRunning = false
     
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
     if playerGui then
         local leaderboard = playerGui:FindFirstChild("Leaderboard")
+
         if leaderboard then
             local content = leaderboard:FindFirstChild("Content")
+
             if content then
                 for _, button in ipairs(content:GetChildren()) do
                     if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
                         local front = button:FindFirstChild("Front")
+
                         if front and front:IsA("TextLabel") and string.find(front.Text, "MetatableIndex", 1, true) then
                             front.Text = string.gsub(front.Text, "MetatableIndex", button.Name)
                         end
@@ -926,16 +1034,22 @@ local function UnloadScript()
 
     for _, plr in ipairs(Players:GetPlayers()) do
         local char = plr.Character
+
         if char then
             local head = char:FindFirstChild("Head")
+
             if head then
                 local tag = head:FindFirstChild("Tag")
+
                 if tag then
                     local user = tag:FindFirstChild("User")
+
                     if user and user:IsA("TextLabel") and string.find(user.Text, "MetatableIndex", 1, true) then
                         user.Text = string.gsub(user.Text, "MetatableIndex", plr.Name)
                     end
+
                     local back = tag:FindFirstChild("Back")
+
                     if back and back:IsA("TextLabel") and string.find(back.Text, "MetatableIndex", 1, true) then
                         back.Text = string.gsub(back.Text, "MetatableIndex", plr.Name)
                     end
@@ -953,6 +1067,7 @@ local function UnloadScript()
     for _, conn in ipairs(Connections) do
         if conn and conn.Connected then conn:Disconnect() end
     end
+
     Connections = {}
 
     if State.Spectating then StopSpectating() end
@@ -988,8 +1103,8 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "SCP Roleplay Script",
     LoadingSubtitle = "by rare",
     Theme = "Default",
-    Width = 650,
-    Height = 600,
+    Width = 800,
+    Height = 685,
     ConfigurationSaving = { Enabled = false },
     Discord = { Enabled = false },
     KeySystem = false
@@ -1023,6 +1138,7 @@ MainTab:CreateToggle({
         end
     end 
 })
+
 MainTab:CreateToggle({ Name = "Infinite Jump", CurrentValue = false, Flag = "InfJumpToggle", Callback = function(Value) State.InfJump = Value end })
 MainTab:CreateToggle({ Name = "TP Walk", CurrentValue = false, Flag = "TPWalkToggle", Callback = function(Value) State.TPWalkEnabled = Value end })
 MainTab:CreateSlider({
@@ -1056,6 +1172,7 @@ VisualsTab:CreateToggle({ Name = "Equipped Weapon ESP", CurrentValue = false, Fl
 VisualsTab:CreateToggle({ Name = "SCP Entities ESP", CurrentValue = false, Flag = "ScpESPToggle", Callback = function(Value) State.ScpESP = Value; if not Value then ClearScpESP() end end })
 
 VisualsTab:CreateSection("Camera & Spectate")
+
 PlayerDropdown = VisualsTab:CreateDropdown({
     Name = "Select Target", Options = GetPlayerNamesList(), CurrentOption = { GetPlayerNamesList()[1] }, MultipleOptions = false, Flag = "SpectatePlayerDropdown",
     Callback = function(Option)
@@ -1064,6 +1181,7 @@ PlayerDropdown = VisualsTab:CreateDropdown({
         if State.Spectating then StartSpectating(selectedName) end
     end,
 })
+
 VisualsTab:CreateToggle({
     Name = "Spectate Target", CurrentValue = false, Flag = "SpectateToggle",
     Callback = function(Value)
@@ -1238,6 +1356,7 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, ga
             humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             
             local jumpVel = 50
+
             if humanoid.UseJumpPower then
                 jumpVel = humanoid.JumpPower > 0 and humanoid.JumpPower or 50
             else
@@ -1256,17 +1375,24 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
     RenderDrawingESP()
 
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
     if playerGui then
         local utility = playerGui:FindFirstChild("Utility")
+
         if utility then
             local progress = utility:FindFirstChild("Progress")
+
             if progress then
                 local teamProgress = progress:FindFirstChild("TeamProgress")
+
                 if teamProgress then
                     local xp = teamProgress:FindFirstChild("XP")
+
                     if xp and xp:IsA("TextLabel") then
                         xp.Text = "001 / 001"
+
                         local xpBack = xp:FindFirstChild("Back")
+
                         if xpBack and xpBack:IsA("TextLabel") then
                             xpBack.Text = "001 / 001"
                         end
@@ -1276,12 +1402,15 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
         end
 
         local leaderboard = playerGui:FindFirstChild("Leaderboard")
+
         if leaderboard then
             local content = leaderboard:FindFirstChild("Content")
+
             if content then
                 for _, button in ipairs(content:GetChildren()) do
                     if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
                         local front = button:FindFirstChild("Front")
+
                         if front and front:IsA("TextLabel") then
                             if State.StreamerMode then
                                 if string.find(front.Text, button.Name, 1, true) then
@@ -1301,10 +1430,13 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
 
     for _, plr in ipairs(Players:GetPlayers()) do
         local char = plr.Character
+
         if char then
             local head = char:FindFirstChild("Head")
+
             if head then
                 local tag = head:FindFirstChild("Tag")
+
                 if tag then
                     local user = tag:FindFirstChild("User")
                     local back = tag:FindFirstChild("Back")
@@ -1313,6 +1445,7 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
                         if user and user:IsA("TextLabel") and string.find(user.Text, plr.Name, 1, true) then
                             user.Text = string.gsub(user.Text, plr.Name, "MetatableIndex")
                         end
+
                         if back and back:IsA("TextLabel") and string.find(back.Text, plr.Name, 1, true) then
                             back.Text = string.gsub(back.Text, plr.Name, "MetatableIndex")
                         end
@@ -1320,6 +1453,7 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
                         if user and user:IsA("TextLabel") and string.find(user.Text, "MetatableIndex", 1, true) then
                             user.Text = string.gsub(user.Text, "MetatableIndex", plr.Name)
                         end
+
                         if back and back:IsA("TextLabel") and string.find(back.Text, "MetatableIndex", 1, true) then
                             back.Text = string.gsub(back.Text, "MetatableIndex", plr.Name)
                         end
@@ -1452,8 +1586,6 @@ task.spawn(function()
 
                     return oldFire(self, p1, ...)
                 end
-
-                print("patched rayfire")
             end
 
             break
@@ -1494,7 +1626,7 @@ task.spawn(function()
                         local reloadDelay = (cachedGunTable.Pistol and 1.25 or 2.25) + 0.3
                         task.wait(reloadDelay)
                     else
-                        warn("Reload execution error:", err)
+                        warn("reload execution error:", err)
                     end
                 end
             end
