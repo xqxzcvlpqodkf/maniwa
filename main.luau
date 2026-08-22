@@ -96,13 +96,13 @@ local State = {
     ScpESP = false,
     Spectating = false,
     SpectateTarget = nil,
-    NotifyOnChange = false,
     Noclip = false,
     InfJump = false,
     TPWalkEnabled = false,
     TPWalkSpeed = 0.1,
     KillAura = false,
     VisualizeShots = false,
+    InstaShot = false,
     SilentAim = false,
     SilentAimWallbang = false,
     SilentAimShowFOV = true,
@@ -112,12 +112,6 @@ local State = {
     HitSound = AvailableHitSounds[1],
     HitSoundsEnabled = false,
     StreamerMode = false,
-}
-
-local SCP_LIST = {
-    "457", "049", "096", "173", "023", "966",
-    "131", "066", "999", "106",
-    "939-1", "939-2", "939-3", "939-4"
 }
 
 local FOUNDATION_TEAMS = {
@@ -156,10 +150,7 @@ local DefaultLighting = {
 local DrawingESPCache = {}
 local ScpCache = {}
 local Connections = {}
-local PlayerDropdown = nil
 local LastEquippedTool = nil
-local ScpLabels = {}
-local ScpStatusCache = {}
 
 local DEFAULT_FIRE_DELAY = 0.15
 local LastFireTime = 0
@@ -756,18 +747,6 @@ local function GetEquippedWeapon(player)
     return "None"
 end
 
-local function GetPlayerNamesList()
-    local names = {}
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then table.insert(names, plr.Name) end
-    end
-
-    if #names == 0 then table.insert(names, "None") end
-
-    return names
-end
-
 local function SetCharacterAnchored(anchored)
     if LocalPlayer.Character then
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -956,71 +935,6 @@ local function RenderDrawingESP()
     end
 end
 
-local function GetScpPosition(scpId)
-    local scpFolder = Workspace:FindFirstChild("SCPs")
-
-    if not scpFolder then 
-        return nil 
-    end
-
-    local model = scpFolder:FindFirstChild("SCP-" .. scpId)
-
-    if not model then 
-        return nil 
-    end
-
-    if scpId == "096" then
-        local scpPart = model:FindFirstChild("096")
-        if scpPart then return scpPart.Position end
-    elseif scpId == "131" then
-        local red = model:FindFirstChild("Red")
-        local yellow = model:FindFirstChild("Yellow")
-        if red and yellow and red:FindFirstChild("HumanoidRootPart") then return red.HumanoidRootPart.Position end
-    elseif scpId == "066" then
-        local body = model:FindFirstChild("Body")
-        if body then return body.Position end
-    elseif scpId == "106" or scpId:sub(1,3) == "939" then
-        local root = model:FindFirstChild("RootPart") or model:FindFirstChild("HumanoidRootPart")
-        if root then return root.Position end
-    else
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        if hrp then return hrp.Position end
-    end
-
-    return nil
-end
-
-local function CheckScpStatuses()
-    for _, scpId in ipairs(SCP_LIST) do
-        local pos = GetScpPosition(scpId)
-        local statusText = "Unknown"
-
-        if not pos then
-            statusText = "Not Spawned"
-        else
-            local isStrict = RegionUtil:IsInSCPCC(pos, scpId, true)
-            statusText = isStrict and "Contained" or "Breached"
-        end
-
-        local oldStatus = ScpStatusCache[scpId]
-
-        if oldStatus and oldStatus ~= statusText and State.NotifyOnChange then
-            Rayfield:Notify({
-                Title = "SCP Status Update",
-                Content = "SCP-" .. scpId .. " is now " .. statusText,
-                Duration = 4,
-                Image = 4483362458
-            })
-        end
-
-        ScpStatusCache[scpId] = statusText
-
-        if ScpLabels[scpId] then
-            ScpLabels[scpId]:Set({ Title = "SCP-" .. scpId, Content = "Status: " .. statusText })
-        end
-    end
-end
-
 local function UnloadScript()
     ScriptRunning = false
     
@@ -1187,12 +1101,35 @@ VisualsTab:CreateToggle({ Name = "SCP Entities ESP", CurrentValue = false, Flag 
 
 VisualsTab:CreateSection("Camera & Spectate")
 
-PlayerDropdown = VisualsTab:CreateDropdown({
-    Name = "Select Target", Options = GetPlayerNamesList(), CurrentOption = { GetPlayerNamesList()[1] }, MultipleOptions = false, Flag = "SpectatePlayerDropdown",
-    Callback = function(Option)
-        local selectedName = typeof(Option) == "table" and Option[1] or Option
-        State.SpectateTarget = selectedName
-        if State.Spectating then StartSpectating(selectedName) end
+VisualsTab:CreateInput({
+    Name = "Spectate Target",
+    PlaceholderText = "Type player name",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        if not Text or Text == "" then
+            State.SpectateTarget = nil
+            return
+        end
+
+        local lowerText = string.lower(Text)
+        local fN = nil
+        local players = Players:GetPlayers()
+
+        for i = 1, #players do
+            local pN = players[i].Name
+            if string.sub(string.lower(pN), 1, #lowerText) == lowerText then
+                fN = pN
+                break
+            end
+        end
+
+        State.SpectateTarget = fN
+
+        if State.Spectating and fN then
+            StartSpectating(fN)
+        elseif State.Spectating and not fN then
+            StopSpectating()
+        end
     end,
 })
 
@@ -1249,6 +1186,7 @@ CombatTab:CreateDivider()
 
 CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAuraToggle", Callback = function(Value) State.KillAura = Value end })
 CombatTab:CreateToggle({ Name = "Visualize Shots", CurrentValue = false, Flag = "VisualizeShotsToggle", Callback = function(Value) State.VisualizeShots = Value end })
+CombatTab:CreateToggle({ Name = "Insta Shot", CurrentValue = false, Flag = "InstaShotToggle", Callback = function(Value) State.InstaShot = Value end })
 
 CombatTab:CreateDivider()
 
@@ -1270,16 +1208,6 @@ CombatTab:CreateSlider({
         State.SilentAimFOVRadius = Value
     end
 })
-
-local ScpsTab = Window:CreateTab("SCPs", 4483362458)
-ScpsTab:CreateSection("Notifications")
-ScpsTab:CreateToggle({ Name = "Notification On Change", CurrentValue = false, Flag = "NotifyOnChangeToggle", Callback = function(Value) State.NotifyOnChange = Value end })
-
-ScpsTab:CreateSection("Entity Status Tracker")
-
-for _, scpId in ipairs(SCP_LIST) do
-    ScpLabels[scpId] = ScpsTab:CreateParagraph({ Title = "SCP-" .. scpId, Content = "Status: CHECKING..." })
-end
 
 local OthersTab = Window:CreateTab("Settings", 4483362458)
 OthersTab:CreateSection("Script Management")
@@ -1313,7 +1241,7 @@ table.insert(Connections, RunService.Heartbeat:Connect(function()
     end
 
     local CurrentTime = os.clock()
-    local FireDelay = GetCurrentFireDelay(EquippedTool)
+    local FireDelay = State.InstaShot and 0.025 or GetCurrentFireDelay(EquippedTool)
     
     if CurrentTime - LastFireTime < FireDelay then return end
 
@@ -1529,17 +1457,6 @@ table.insert(Connections, RunService.RenderStepped:Connect(function()
     end
 end))
 
-task.spawn(function()
-    while ScriptRunning do
-        task.wait(1)
-        pcall(CheckScpStatuses)
-    end
-end)
-
-local function RefreshPlayerList()
-    if PlayerDropdown then PlayerDropdown:Refresh(GetPlayerNamesList()) end
-end
-
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         task.spawn(CheckForMod, player)
@@ -1548,12 +1465,10 @@ end
 
 table.insert(Connections, Players.PlayerAdded:Connect(function(player)
     task.spawn(CheckForMod, player)
-    RefreshPlayerList()
 end))
 
 table.insert(Connections, Players.PlayerRemoving:Connect(function(player)
     RemoveDrawingESP(player)
-    RefreshPlayerList()
     
     if State.Spectating and State.SpectateTarget == player.Name then 
         StopSpectating() 
@@ -1600,8 +1515,6 @@ task.spawn(function()
 
                     return oldFire(self, p1, ...)
                 end
-
-                print("patched rayfire")
             end
 
             break
@@ -1641,8 +1554,6 @@ task.spawn(function()
                     if success then
                         local reloadDelay = (cachedGunTable.Pistol and 1.25 or 2.25) + 0.3
                         task.wait(reloadDelay)
-                    else
-                        warn("Reload execution error:", err)
                     end
                 end
             end
