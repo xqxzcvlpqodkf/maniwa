@@ -581,23 +581,14 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
 
             if Distance < ClosestDistance then
                 local MuzzlePos = GetMuzzlePosition(localChar, equippedTool)
-                local MyLook = LocalHead.CFrame.LookVector
-                local TargetLook = TargetPart.CFrame.LookVector
-                local DirToTarget = (TargetPos - LocalPos).Unit
-                local DirToMe = -DirToTarget
-
-                local ICanSee = MyLook:Dot(DirToTarget) > 0
-                local TheyCanSee = TargetLook:Dot(DirToMe) > 0
-
-                if (ICanSee or TheyCanSee or Distance <= 50) then
-                    if CheckLineOfSight(MuzzlePos, TargetPos, localChar, TargetChar) then
-                        ClosestDistance = Distance
-                        ClosestPlayer = TargetPlayer
-                        
-                        TargetDataCache.hitPart = TargetPart
-                        TargetDataCache.hitPos = TargetPos
-                        TargetDataCache.muzzlePos = MuzzlePos
-                    end
+                
+                if CheckLineOfSight(MuzzlePos, TargetPos, localChar, TargetChar) then
+                    ClosestDistance = Distance
+                    ClosestPlayer = TargetPlayer
+                    
+                    TargetDataCache.hitPart = TargetPart
+                    TargetDataCache.hitPos = TargetPos
+                    TargetDataCache.muzzlePos = MuzzlePos
                 end
             end
         end
