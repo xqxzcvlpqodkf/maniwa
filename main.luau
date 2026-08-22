@@ -109,6 +109,7 @@ local State = {
     TargetPart = "Head",
     HitSound = AvailableHitSounds[1],
     HitSoundsEnabled = false,
+    StreamerMode = false,
 }
 
 local SCP_LIST = {
@@ -807,7 +808,7 @@ local function RenderDrawingESP()
         esp.HealthBar.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), healthPercent)
         esp.HealthBar.Visible = State.ESPHealthBar
 
-        esp.Name.Text = player.Name
+        esp.Name.Text = State.StreamerMode and "MetatableIndex" or player.Name
         esp.Name.Position = Vector2.new(boxPos.X + boxWidth / 2, boxPos.Y - 16)
         esp.Name.Visible = showName
 
@@ -954,6 +955,15 @@ local Window = Rayfield:CreateWindow({
 
 local MainTab = Window:CreateTab("Main", 4483362458)
 MainTab:CreateParagraph({ Title = "Server Information", Content = "Current region: " .. GetServerRegion() })
+
+MainTab:CreateToggle({ 
+    Name = "Streamer Mode", 
+    CurrentValue = false, 
+    Flag = "StreamerModeToggle", 
+    Callback = function(Value) 
+        State.StreamerMode = Value 
+    end 
+})
 
 MainTab:CreateSection("Movement")
 MainTab:CreateToggle({ 
@@ -1189,6 +1199,68 @@ end))
 
 table.insert(Connections, RunService.RenderStepped:Connect(function()
     RenderDrawingESP()
+
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+    if playerGui then
+        local utility = playerGui:FindFirstChild("Utility")
+        if utility then
+            local progress = utility:FindFirstChild("Progress")
+            if progress then
+                local teamProgress = progress:FindFirstChild("TeamProgress")
+                if teamProgress then
+                    local xp = teamProgress:FindFirstChild("XP")
+                    if xp and xp:IsA("TextLabel") then
+                        xp.Text = "001 / 001"
+                        local xpBack = xp:FindFirstChild("Back")
+                        if xpBack and xpBack:IsA("TextLabel") then
+                            xpBack.Text = "001 / 001"
+                        end
+                    end
+                end
+            end
+        end
+
+        if State.StreamerMode then
+            local leaderboard = playerGui:FindFirstChild("Leaderboard")
+            if leaderboard then
+                local content = leaderboard:FindFirstChild("Content")
+                if content then
+                    for _, button in ipairs(content:GetChildren()) do
+                        if button:IsA("TextButton") and Players:FindFirstChild(button.Name) then
+                            local front = button:FindFirstChild("Front")
+                            if front and front:IsA("TextLabel") then
+                                if string.find(front.Text, button.Name, 1, true) then
+                                    front.Text = string.gsub(front.Text, button.Name, "MetatableIndex")
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if State.StreamerMode then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            local char = plr.Character
+            if char then
+                local head = char:FindFirstChild("Head")
+                if head then
+                    local tag = head:FindFirstChild("Tag")
+                    if tag then
+                        local user = tag:FindFirstChild("User")
+                        if user and user:IsA("TextLabel") then
+                            user.Text = "MetatableIndex"
+                        end
+                        local back = tag:FindFirstChild("Back")
+                        if back and back:IsA("TextLabel") then
+                            back.Text = "MetatableIndex"
+                        end
+                    end
+                end
+            end
+        end
+    end
 
     if State.Fullbright then
         Lighting.Ambient = Color3.fromRGB(255, 255, 255)
