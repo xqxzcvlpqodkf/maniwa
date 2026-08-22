@@ -1418,6 +1418,34 @@ table.insert(Connections, RunService.Stepped:Connect(function()
 end))
 
 task.spawn(function()
+    local gc = getgc(true)
+
+    for i = 1, #gc do
+        local obj = gc[i]
+        
+        if type(obj) == "table" and rawget(obj, "RayHit") and rawget(obj, "RayPierced") then
+            local originalrh = obj.RayHit
+
+            if type(originalrh) == "table" and originalrh.Fire then
+                local oldFire = originalrh.Fire
+
+                originalrh.Fire = function(self, p1, ...)
+                    if type(p1) == "table" and p1.UserData == nil then
+                        p1.UserData = { Type = "Bullet" }
+                    end
+
+                    return oldFire(self, p1, ...)
+                end
+
+                print("patched rayfire")
+            end
+
+            break
+        end
+    end
+end)
+
+task.spawn(function()
     while ScriptRunning do
         task.wait(0.5)
         UpdateScpESP()
@@ -1445,6 +1473,7 @@ task.spawn(function()
                     end
                     
                     local success, err = pcall(reloadFn)
+
                     if success then
                         local reloadDelay = (cachedGunTable.Pistol and 1.25 or 2.25) + 0.3
                         task.wait(reloadDelay)
