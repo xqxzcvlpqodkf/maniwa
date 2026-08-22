@@ -1,5 +1,3 @@
---!nocheck
-
 local HttpService = game:GetService("HttpService")
 local fetch = request or http_request or syn.request
 
@@ -342,14 +340,16 @@ local function IsValidTarget(player)
     local MyTeam = LocalPlayer.Team and LocalPlayer.Team.Name or "Unknown"
     local TargetTeam = player.Team and player.Team.Name or "Unknown"
 
-    if MyTeam == "Class - D" and TargetTeam == "Class - D" then
-        return false
-    end
-
-    local isHostileClassD = (TargetTeam == "Class - D" and IsClassDHostile(player))
-
-    if IsWhitelisted(player) and not isHostileClassD then
-        return false
+    if TargetTeam == "Class - D" then
+        if MyTeam == "Class - D" or MyTeam == "Chaos Insurgency" then
+            return false
+        elseif not IsClassDHostile(player) then
+            return false
+        end
+    else
+        if IsWhitelisted(player) then
+            return false
+        end
     end
 
     return player.Character 
@@ -610,10 +610,12 @@ local function GetClosestVisibleTarget(localChar, equippedTool)
         local targetTeam = TargetPlayer.Team and TargetPlayer.Team.Name or "Unknown"
         local myTeam = LocalPlayer.Team and LocalPlayer.Team.Name or "Unknown"
 
-        if myTeam == "Class - D" and targetTeam == "Class - D" then continue end
-
         if targetTeam == "Class - D" then
-            if not IsClassDHostile(TargetPlayer) then continue end
+            if myTeam == "Class - D" or myTeam == "Chaos Insurgency" then
+                continue
+            elseif not IsClassDHostile(TargetPlayer) then
+                continue
+            end
         else
             if IsWhitelisted(TargetPlayer) then continue end
         end
