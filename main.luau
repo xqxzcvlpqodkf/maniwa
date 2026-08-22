@@ -131,8 +131,8 @@ local FOUNDATION_TEAMS = {
 }
 
 local TEAM_FRIENDS = {
-    ["Class - D"] = { ["Class - D"] = true, ["Chaos Insurgency"] = true, ["Scientific Department"] = true,},
-    ["Chaos Insurgency"] = { ["Class - D"] = true, ["Chaos Insurgency"] = true, ["Scientific Department"] = true,},
+    ["Class - D"] = { ["Class - D"] = true, ["Chaos Insurgency"] = true, ["Scientific Department"] = true, ["Medical Department"] = true,},
+    ["Chaos Insurgency"] = { ["Class - D"] = true, ["Chaos Insurgency"] = true, ["Scientific Department"] = true, ["Medical Department"] = true,},
     ["Administrative Department"] = FOUNDATION_TEAMS,
     ["Intelligence Agency"] = FOUNDATION_TEAMS,
     ["Internal Security Department"] = FOUNDATION_TEAMS,
